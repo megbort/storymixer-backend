@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StoryMixer.Api/StoryMixer.Api.csproj" />
+  </Folder>
+</Solution>
