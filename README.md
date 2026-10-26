@@ -79,6 +79,18 @@ docker compose up -d
 
 Connection: host `localhost`, port `5432`, database/user/password `storymixer` (dev only). Stop with `docker compose down`; add `-v` to also wipe the data.
 
+### Migrations
+
+Requires the EF Core tool: `dotnet tool install --global dotnet-ef`.
+
+```bash
+# Apply all pending migrations to the database
+dotnet ef database update --project src/StoryMixer.Api
+
+# After changing entities: generate a new migration, review it, then apply it
+dotnet ef migrations add <Name> --project src/StoryMixer.Api --output-dir Data/Migrations
+```
+
 ## Run locally
 
 ```bash
