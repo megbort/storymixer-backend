@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/StoryMixer.Api/StoryMixer.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StoryMixer.Api.Tests/StoryMixer.Api.Tests.csproj" />
+  </Folder>
 </Solution>
