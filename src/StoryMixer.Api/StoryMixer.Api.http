@@ -4,3 +4,7 @@ GET {{StoryMixer.Api_HostAddress}}/openapi/v1.json
 Accept: application/json
 
 ###
+
+GET {{StoryMixer.Api_HostAddress}}/health/db
+
+###
