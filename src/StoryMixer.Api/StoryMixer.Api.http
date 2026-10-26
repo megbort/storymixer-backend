@@ -8,3 +8,22 @@ Accept: application/json
 GET {{StoryMixer.Api_HostAddress}}/health/db
 
 ###
+
+POST {{StoryMixer.Api_HostAddress}}/users
+Content-Type: application/json
+
+{
+  "name": "Ada Lovelace",
+  "email": "ada@example.com",
+  "password": "correct-horse-battery"
+}
+
+###
+
+GET {{StoryMixer.Api_HostAddress}}/users
+
+###
+
+GET {{StoryMixer.Api_HostAddress}}/users/00000000-0000-0000-0000-000000000000
+
+###

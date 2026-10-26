@@ -23,6 +23,7 @@ src/
     Entities/               # C# classes mapped to tables
     Features/
       Health/               # GET /health/db
+      Users/                # POST /users, GET /users, GET /users/{id}
 tests/
   StoryMixer.Api.Tests/     # xUnit tests, mirrors Features/ layout
 ```
@@ -32,6 +33,8 @@ tests/
 ```bash
 dotnet test
 ```
+
+Integration tests start their own throwaway Postgres container (Testcontainers), so Docker Desktop must be running. They never touch the dev database.
 
 ## Database
 
@@ -105,7 +108,10 @@ dotnet dev-certs https --trust
 dotnet run --project src/StoryMixer.Api --launch-profile https
 ```
 
-In the Development environment the OpenAPI document is served at `/openapi/v1.json`.
+In the Development environment:
+
+- Swagger UI: `http://localhost:5263/swagger`, to try every endpoint from the browser
+- OpenAPI document: `/openapi/v1.json` (import this URL into Postman to get all endpoints as a collection)
 
 ## Build
 

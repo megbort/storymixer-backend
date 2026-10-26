@@ -8,11 +8,11 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
 {
     public void Configure(EntityTypeBuilder<Story> builder)
     {
-        builder.HasOne(s => s.User)
-            .WithMany(u => u.Stories)
-            .HasForeignKey(s => s.UserId)
+        builder.HasOne(story => story.User)
+            .WithMany(user => user.Stories)
+            .HasForeignKey(story => story.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Property(s => s.CreatedAt).HasDefaultValueSql("now()");
+        builder.Property(story => story.CreatedAt).HasDefaultValueSql("now()");
     }
 }

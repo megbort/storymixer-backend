@@ -8,11 +8,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.Property(u => u.Name).HasMaxLength(100);
+        builder.Property(user => user.Name).HasMaxLength(100);
 
-        builder.Property(u => u.Email).HasColumnType("citext");
-        builder.HasIndex(u => u.Email).IsUnique();
+        builder.Property(user => user.Email).HasColumnType("citext");
+        builder.HasIndex(user => user.Email).IsUnique();
 
-        builder.Property(u => u.CreatedAt).HasDefaultValueSql("now()");
+        builder.Property(user => user.CreatedAt).HasDefaultValueSql("now()");
     }
 }
