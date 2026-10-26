@@ -14,6 +14,7 @@ public class StoryMixerApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString());
+        builder.UseSetting("Jwt:Key", "test-signing-key-that-is-at-least-32-bytes-long");
     }
 
     public async Task InitializeAsync()

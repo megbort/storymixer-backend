@@ -1,10 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StoryMixer.Api.Data;
 using StoryMixer.Api.Entities;
+using StoryMixer.Api.Features.Auth;
 using StoryMixer.Api.Features.Users;
 
 namespace StoryMixer.Api.Tests.Features.Users;
@@ -17,7 +19,7 @@ public class UserEndpointsTests(StoryMixerApiFactory factory) : IClassFixture<St
         new("Ada Lovelace", email ?? $"ada-{Guid.NewGuid()}@example.com", "correct-horse-battery");
 
     [Fact]
-    public async Task CreateUser_ReturnsCreatedUserWithLocation()
+    public async Task CreateUser_ReturnsCreatedUserWithLocationOfCurrentUser()
     {
         var request = NewUserRequest();
 
@@ -28,7 +30,7 @@ public class UserEndpointsTests(StoryMixerApiFactory factory) : IClassFixture<St
         Assert.NotNull(user);
         Assert.NotEqual(Guid.Empty, user.Id);
         Assert.Equal(request.Email, user.Email);
-        Assert.Equal($"/users/{user.Id}", response.Headers.Location?.AbsolutePath);
+        Assert.Equal("/users/me", response.Headers.Location?.OriginalString);
     }
 
     [Fact]
@@ -81,33 +83,27 @@ public class UserEndpointsTests(StoryMixerApiFactory factory) : IClassFixture<St
     }
 
     [Fact]
-    public async Task GetUsers_IncludesCreatedUser()
+    public async Task GetCurrentUser_WithoutToken_ReturnsUnauthorized()
     {
-        var created = await (await _client.PostAsJsonAsync("/users", NewUserRequest()))
-            .Content.ReadFromJsonAsync<UserResponse>();
+        var response = await _client.GetAsync("/users/me");
 
-        var users = await _client.GetFromJsonAsync<List<UserResponse>>("/users");
-
-        Assert.NotNull(users);
-        Assert.Contains(created, users);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetUserById_ReturnsCreatedUser()
+    public async Task GetCurrentUser_WithToken_ReturnsLoggedInUser()
     {
-        var created = await (await _client.PostAsJsonAsync("/users", NewUserRequest()))
+        var request = NewUserRequest();
+        var created = await (await _client.PostAsJsonAsync("/users", request))
             .Content.ReadFromJsonAsync<UserResponse>();
+        var login = await (await _client.PostAsJsonAsync("/auth/login", new LoginRequest(request.Email, request.Password)))
+            .Content.ReadFromJsonAsync<AccessTokenResponse>();
 
-        var fetched = await _client.GetFromJsonAsync<UserResponse>($"/users/{created!.Id}");
+        using var message = new HttpRequestMessage(HttpMethod.Get, "/users/me");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", login!.AccessToken);
+        var response = await _client.SendAsync(message);
 
-        Assert.Equal(created, fetched);
-    }
-
-    [Fact]
-    public async Task GetUserById_WithUnknownId_ReturnsNotFound()
-    {
-        var response = await _client.GetAsync($"/users/{Guid.NewGuid()}");
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(created, await response.Content.ReadFromJsonAsync<UserResponse>());
     }
 }
