@@ -26,6 +26,12 @@ builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TokenService>();
 
+builder.Services.AddSingleton(
+    builder.Configuration.GetSection(RefreshTokenOptions.SectionName).Get<RefreshTokenOptions>()
+        ?? new RefreshTokenOptions());
+builder.Services.AddSingleton<RefreshTokenCookie>();
+builder.Services.AddScoped<RefreshTokenService>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

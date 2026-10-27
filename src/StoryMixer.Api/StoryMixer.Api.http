@@ -35,3 +35,11 @@ GET {{StoryMixer.Api_HostAddress}}/users/me
 Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ###
+
+POST {{StoryMixer.Api_HostAddress}}/auth/refresh
+
+###
+
+POST {{StoryMixer.Api_HostAddress}}/auth/logout
+
+###
