@@ -118,3 +118,24 @@ In the Development environment:
 ```bash
 dotnet build
 ```
+
+## Deploy (Railway)
+
+Railway builds `master` with the root `Dockerfile` (configured in `railway.json`) and waits for `GET /health/db` to pass before switching traffic.
+
+The project needs a PostgreSQL service named `Postgres`. Set these variables on the API service:
+
+```
+ConnectionStrings__Default=Host=${{Postgres.PGHOST}};Port=${{Postgres.PGPORT}};Database=${{Postgres.PGDATABASE}};Username=${{Postgres.PGUSER}};Password=${{Postgres.PGPASSWORD}}
+ASPNETCORE_ENVIRONMENT=Production
+```
+
+Outside Development, the app applies pending EF Core migrations on startup, so new migrations go out with the next deploy.
+
+To check the image locally (with `docker compose up -d` running):
+
+```bash
+docker build -t storymixer-api .
+docker run --rm -p 8080:8080 -e ConnectionStrings__Default="Host=host.docker.internal;Port=5432;Database=storymixer;Username=storymixer;Password=storymixer" storymixer-api
+curl localhost:8080/health/db
+```
