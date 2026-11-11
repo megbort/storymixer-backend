@@ -18,6 +18,14 @@ builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 var app = builder.Build();
 
+// Outside Development (e.g. Railway), apply pending migrations on startup.
+// Locally, migrations are applied with `dotnet ef database update`.
+if (!app.Environment.IsDevelopment())
+{
+  using var scope = app.Services.CreateScope();
+  await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+
 if (app.Environment.IsDevelopment())
 {
   app.MapOpenApi();
@@ -29,4 +37,4 @@ app.UseHttpsRedirection();
 app.MapHealthEndpoints();
 app.MapUserEndpoints();
 
-app.Run();
+await app.RunAsync();
