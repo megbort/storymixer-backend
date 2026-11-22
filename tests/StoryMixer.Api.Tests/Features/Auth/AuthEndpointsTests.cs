@@ -1,7 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
+using StoryMixer.Api.Data;
 using StoryMixer.Api.Features.Auth;
 using StoryMixer.Api.Features.Users;
 
@@ -148,5 +153,58 @@ public class AuthEndpointsTests(StoryMixerApiFactory factory) : IClassFixture<St
 
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_WithExpiredCookie_ReturnsUnauthorized()
+    {
+        var cookie = await LoginAndGetRefreshCookieAsync();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(cookie.Split('=', 2)[1])));
+            await db.RefreshTokens
+                .Where(token => token.TokenHash == tokenHash)
+                .ExecuteUpdateAsync(setters =>
+                setters.SetProperty(token => token.ExpiresAt, DateTimeOffset.UtcNow.AddMinutes(-1)));
+        }
+
+        var response = await PostWithCookieAsync("/auth/refresh", cookie);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Logout_WithoutCookie_ReturnsNoContent()
+    {
+        var response = await PostWithCookieAsync("/auth/logout", cookie: null);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Preflight_FromAllowedOrigin_AllowsCredentials()
+    {
+        var response = await SendPreflightAsync(StoryMixerApiFactory.AllowedOrigin);
+
+        Assert.Equal(StoryMixerApiFactory.AllowedOrigin, response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.Equal("true", response.Headers.GetValues("Access-Control-Allow-Credentials").Single());
+    }
+
+    [Fact]
+    public async Task Preflight_FromUnknownOrigin_IsNotAllowed()
+    {
+        var response = await SendPreflightAsync("https://evil.example.com");
+
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    private async Task<HttpResponseMessage> SendPreflightAsync(string origin)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Options, "/auth/login");
+        message.Headers.Add("Origin", origin);
+        message.Headers.Add("Access-Control-Request-Method", "POST");
+        message.Headers.Add("Access-Control-Request-Headers", "content-type");
+        return await _client.SendAsync(message);
     }
 }

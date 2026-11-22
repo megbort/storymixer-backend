@@ -106,4 +106,20 @@ public class UserEndpointsTests(StoryMixerApiFactory factory) : IClassFixture<St
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(created, await response.Content.ReadFromJsonAsync<UserResponse>());
     }
+
+    [Fact]
+    public async Task GetCurrentUser_WithTamperedToken_ReturnsUnauthorized()
+    {
+        var request = NewUserRequest();
+        await _client.PostAsJsonAsync("/users", request);
+        var login = await (await _client.PostAsJsonAsync("/auth/login", new LoginRequest(request.Email, request.Password)))
+            .Content.ReadFromJsonAsync<AccessTokenResponse>();
+        var tampered = login!.AccessToken[..^4] + (login.AccessToken.EndsWith("AAAA") ? "BBBB" : "AAAA");
+
+        using var message = new HttpRequestMessage(HttpMethod.Get, "/users/me");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tampered);
+        var response = await _client.SendAsync(message);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }
