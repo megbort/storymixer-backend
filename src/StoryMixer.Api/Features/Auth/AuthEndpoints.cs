@@ -50,15 +50,14 @@ public static class AuthEndpoints
     {
         var cookieValue = RefreshTokenCookie.Read(request);
         var current = cookieValue is null ? null : await refreshTokens.FindActiveAsync(cookieValue);
+        var replacement = current is null ? null : await refreshTokens.RotateAsync(current);
 
-        if (current is null)
+        if (current is null || replacement is null)
         {
-            refreshTokenCookie.Delete(response);
             return Results.Unauthorized();
         }
 
-        await refreshTokens.RevokeAsync(current);
-        refreshTokenCookie.Append(response, await refreshTokens.IssueAsync(current.UserId));
+        refreshTokenCookie.Append(response, replacement);
 
         return Results.Ok(tokenService.CreateAccessToken(current.User));
     }

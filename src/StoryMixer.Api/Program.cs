@@ -10,7 +10,9 @@ using StoryMixer.Api.Features.Users;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
+builder.Services.AddOpenApi(options => options
+    .AddDocumentTransformer<BearerSecuritySchemeTransformer>()
+    .AddOperationTransformer<BearerSecurityRequirementTransformer>());
 builder.Services.AddValidation();
 
 builder.Services.AddDbContext<AppDbContext>(options =>

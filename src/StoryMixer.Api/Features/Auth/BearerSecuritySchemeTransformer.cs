@@ -5,7 +5,7 @@ namespace StoryMixer.Api.Features.Auth;
 
 public class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer
 {
-    private const string SchemeName = "Bearer";
+    public const string SchemeName = "Bearer";
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
@@ -17,11 +17,6 @@ public class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer
             Scheme = "bearer",
             BearerFormat = "JWT",
         };
-
-        document.Security =
-        [
-            new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference(SchemeName, document)] = [] },
-        ];
 
         return Task.CompletedTask;
     }

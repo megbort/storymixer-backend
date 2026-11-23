@@ -38,10 +38,30 @@ public class RefreshTokenService(AppDbContext db, RefreshTokenOptions options, T
                 token.TokenHash == tokenHash && token.RevokedAt == null && token.ExpiresAt > now);
     }
 
-    public async Task RevokeAsync(RefreshToken token)
+    public async Task<IssuedRefreshToken?> RotateAsync(RefreshToken current)
     {
-        token.RevokedAt = timeProvider.GetUtcNow();
-        await db.SaveChangesAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
+        if (!await RevokeAsync(current))
+        {
+            return null;
+        }
+
+        var replacement = await IssueAsync(current.UserId);
+        await transaction.CommitAsync();
+
+        return replacement;
+    }
+
+    public async Task<bool> RevokeAsync(RefreshToken token)
+    {
+        var now = timeProvider.GetUtcNow();
+
+        var revoked = await db.RefreshTokens
+            .Where(candidate => candidate.Id == token.Id && candidate.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(candidate => candidate.RevokedAt, now));
+
+        return revoked == 1;
     }
 
     private static string Hash(string value) =>

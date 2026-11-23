@@ -199,6 +199,54 @@ public class AuthEndpointsTests(StoryMixerApiFactory factory) : IClassFixture<St
         Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
     }
 
+    [Fact]
+    public async Task Refresh_ConcurrentRequestsWithSameCookie_OnlyOneSucceeds()
+    {
+        var cookie = await LoginAndGetRefreshCookieAsync();
+
+        var responses = await Task.WhenAll(
+            PostWithCookieAsync("/auth/refresh", cookie),
+            PostWithCookieAsync("/auth/refresh", cookie));
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
+        var rejected = Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Unauthorized);
+        Assert.False(SetsRefreshCookie(rejected));
+    }
+
+    [Fact]
+    public async Task Refresh_WithRevokedCookie_DoesNotClearCookie()
+    {
+        var cookie = await LoginAndGetRefreshCookieAsync();
+        await PostWithCookieAsync("/auth/refresh", cookie);
+
+        var response = await PostWithCookieAsync("/auth/refresh", cookie);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.False(SetsRefreshCookie(response));
+    }
+
+    private static bool SetsRefreshCookie(HttpResponseMessage response) =>
+        response.Headers.TryGetValues("Set-Cookie", out var headers) &&
+        headers.Any(header => header.StartsWith($"{RefreshTokenCookie.Name}="));
+
+    [Fact]
+    public async Task RotateAsync_SameTokenLoadedTwice_OnlyFirstRotationSucceeds()
+    {
+        var cookieValue = (await LoginAndGetRefreshCookieAsync()).Split('=', 2)[1];
+        using var firstScope = factory.Services.CreateScope();
+        using var secondScope = factory.Services.CreateScope();
+        var firstService = firstScope.ServiceProvider.GetRequiredService<RefreshTokenService>();
+        var secondService = secondScope.ServiceProvider.GetRequiredService<RefreshTokenService>();
+        var firstLoad = await firstService.FindActiveAsync(cookieValue);
+        var secondLoad = await secondService.FindActiveAsync(cookieValue);
+
+        var firstRotation = await firstService.RotateAsync(firstLoad!);
+        var secondRotation = await secondService.RotateAsync(secondLoad!);
+
+        Assert.NotNull(firstRotation);
+        Assert.Null(secondRotation);
+    }
+
     private async Task<HttpResponseMessage> SendPreflightAsync(string origin)
     {
         using var message = new HttpRequestMessage(HttpMethod.Options, "/auth/login");

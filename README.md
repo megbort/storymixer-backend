@@ -137,7 +137,11 @@ The project needs a PostgreSQL service named `Postgres`. Set these variables on 
 ```
 ConnectionStrings__Default=Host=${{Postgres.PGHOST}};Port=${{Postgres.PGPORT}};Database=${{Postgres.PGDATABASE}};Username=${{Postgres.PGUSER}};Password=${{Postgres.PGPASSWORD}}
 ASPNETCORE_ENVIRONMENT=Production
+Jwt__Key=<random, at least 32 bytes: openssl rand -base64 48>
+Cors__AllowedOrigins__0=https://storymixer.megankrenbrink.com
 ```
+
+The API is served from `storymixer-api.megankrenbrink.com` (Railway custom domain), so it shares a site with the frontend and the refresh cookie works with `SameSite=Lax`.
 
 Outside Development, the app applies pending EF Core migrations on startup, so new migrations go out with the next deploy.
 
@@ -145,6 +149,9 @@ To check the image locally (with `docker compose up -d` running):
 
 ```bash
 docker build -t storymixer-api .
-docker run --rm -p 8080:8080 -e ConnectionStrings__Default="Host=host.docker.internal;Port=5432;Database=storymixer;Username=storymixer;Password=storymixer" storymixer-api
+docker run --rm -p 8080:8080 \
+  -e ConnectionStrings__Default="Host=host.docker.internal;Port=5432;Database=storymixer;Username=storymixer;Password=storymixer" \
+  -e Jwt__Key="$(openssl rand -base64 48)" \
+  storymixer-api
 curl localhost:8080/health/db
 ```
