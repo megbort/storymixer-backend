@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using StoryMixer.Api.Data;
 using StoryMixer.Api.Entities;
 
@@ -12,8 +14,7 @@ public static class UserEndpoints
         var users = app.MapGroup("/users").WithTags("Users");
 
         users.MapPost("/", CreateUser);
-        users.MapGet("/", GetUsers);
-        users.MapGet("/{id:guid}", GetUserById).WithName(nameof(GetUserById));
+        users.MapGet("/me", GetCurrentUser).RequireAuthorization();
 
         return app;
     }
@@ -39,23 +40,18 @@ public static class UserEndpoints
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        return Results.CreatedAtRoute(nameof(GetUserById), new { id = user.Id }, UserResponse.From(user));
+        return Results.Created("/users/me", UserResponse.From(user));
     }
 
-    private static async Task<IResult> GetUsers(AppDbContext db)
+    private static async Task<IResult> GetCurrentUser(ClaimsPrincipal principal, AppDbContext db)
     {
-        var users = await db.Users
-            .OrderBy(user => user.CreatedAt)
-            .Select(user => new UserResponse(user.Id, user.Name, user.Email, user.CreatedAt))
-            .ToListAsync();
+        if (!Guid.TryParse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub), out var userId))
+        {
+            return Results.Unauthorized();
+        }
 
-        return Results.Ok(users);
-    }
+        var user = await db.Users.FindAsync(userId);
 
-    private static async Task<IResult> GetUserById(Guid id, AppDbContext db)
-    {
-        var user = await db.Users.FindAsync(id);
-
-        return user is null ? Results.NotFound() : Results.Ok(UserResponse.From(user));
+        return user is null ? Results.Unauthorized() : Results.Ok(UserResponse.From(user));
     }
 }
